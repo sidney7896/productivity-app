@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { PomodoroSession, PomodoroSettings } from "@/types";
-import { getItem, setItem, generateId } from "@/lib/store";
+import { useLocalStorage, generateId } from "@/lib/store";
 
 const SESSIONS_KEY = "productivity-pomodoro-sessions";
 const SETTINGS_KEY = "productivity-pomodoro-settings";
@@ -15,31 +15,22 @@ const DEFAULT_SETTINGS: PomodoroSettings = {
 };
 
 export function usePomodoro() {
-  const [settings, setSettings] = useState<PomodoroSettings>(DEFAULT_SETTINGS);
-  const [sessions, setSessions] = useState<PomodoroSession[]>([]);
+  const [settings, setSettings, settingsLoaded] = useLocalStorage<PomodoroSettings>(SETTINGS_KEY, DEFAULT_SETTINGS);
+  const [sessions, setSessions, sessionsLoaded] = useLocalStorage<PomodoroSession[]>(SESSIONS_KEY, []);
   const [isRunning, setIsRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(DEFAULT_SETTINGS.workMinutes * 60);
   const [currentType, setCurrentType] = useState<"work" | "break">("work");
   const [sessionCount, setSessionCount] = useState(0);
-  const [loaded, setLoaded] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const savedSettings = getItem<PomodoroSettings>(SETTINGS_KEY, DEFAULT_SETTINGS);
-    const savedSessions = getItem<PomodoroSession[]>(SESSIONS_KEY, []);
-    setSettings(savedSettings);
-    setSessions(savedSessions);
-    setSecondsLeft(savedSettings.workMinutes * 60);
-    setLoaded(true);
-  }, []);
+  const loaded = settingsLoaded && sessionsLoaded;
 
+  // Sync timer with loaded settings
   useEffect(() => {
-    if (loaded) setItem(SESSIONS_KEY, sessions);
-  }, [sessions, loaded]);
-
-  useEffect(() => {
-    if (loaded) setItem(SETTINGS_KEY, settings);
-  }, [settings, loaded]);
+    if (settingsLoaded && !isRunning) {
+      setSecondsLeft(settings.workMinutes * 60);
+    }
+  }, [settingsLoaded]);
 
   useEffect(() => {
     if (isRunning) {
@@ -97,7 +88,7 @@ export function usePomodoro() {
         { body: currentType === "work" ? "Goed gedaan! Neem een pauze." : "Pauze voorbij. Focus!" }
       );
     }
-  }, [currentType, settings, sessionCount]);
+  }, [currentType, settings, sessionCount, setSessions]);
 
   const start = useCallback(() => setIsRunning(true), []);
 
@@ -132,7 +123,7 @@ export function usePomodoro() {
       }
       return updated;
     });
-  }, [isRunning, currentType]);
+  }, [isRunning, currentType, setSettings]);
 
   const todaySessions = sessions.filter((s) => {
     const today = new Date().toDateString();

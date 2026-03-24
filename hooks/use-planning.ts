@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { TimeBlock } from "@/types";
-import { getItem, setItem, generateId } from "@/lib/store";
+import { useLocalStorage, generateId } from "@/lib/store";
 
 const STORAGE_KEY = "productivity-planning";
 
@@ -16,17 +16,7 @@ const COLORS = [
 ];
 
 export function usePlanning() {
-  const [blocks, setBlocks] = useState<TimeBlock[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    setBlocks(getItem<TimeBlock[]>(STORAGE_KEY, []));
-    setLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (loaded) setItem(STORAGE_KEY, blocks);
-  }, [blocks, loaded]);
+  const [blocks, setBlocks, loaded] = useLocalStorage<TimeBlock[]>(STORAGE_KEY, []);
 
   const addBlock = useCallback(
     (
@@ -50,7 +40,7 @@ export function usePlanning() {
       setBlocks((prev) => [...prev, block]);
       return block;
     },
-    []
+    [setBlocks]
   );
 
   const updateBlock = useCallback(
@@ -59,12 +49,12 @@ export function usePlanning() {
         prev.map((b) => (b.id === id ? { ...b, ...updates } : b))
       );
     },
-    []
+    [setBlocks]
   );
 
   const deleteBlock = useCallback((id: string) => {
     setBlocks((prev) => prev.filter((b) => b.id !== id));
-  }, []);
+  }, [setBlocks]);
 
   const getBlocksForDate = useCallback(
     (date: string) => blocks.filter((b) => b.date === date),

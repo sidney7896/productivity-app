@@ -1,23 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { Note } from "@/types";
-import { getItem, setItem, generateId } from "@/lib/store";
+import { useLocalStorage, generateId } from "@/lib/store";
 
 const STORAGE_KEY = "productivity-notes";
 
 export function useNotes() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    setNotes(getItem<Note[]>(STORAGE_KEY, []));
-    setLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (loaded) setItem(STORAGE_KEY, notes);
-  }, [notes, loaded]);
+  const [notes, setNotes, loaded] = useLocalStorage<Note[]>(STORAGE_KEY, []);
 
   const addNote = useCallback((title: string, content = "", category = "") => {
     const note: Note = {
@@ -30,7 +20,7 @@ export function useNotes() {
     };
     setNotes((prev) => [note, ...prev]);
     return note;
-  }, []);
+  }, [setNotes]);
 
   const updateNote = useCallback((id: string, updates: Partial<Note>) => {
     setNotes((prev) =>
@@ -40,11 +30,11 @@ export function useNotes() {
           : n
       )
     );
-  }, []);
+  }, [setNotes]);
 
   const deleteNote = useCallback((id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+  }, [setNotes]);
 
   return { notes, loaded, addNote, updateNote, deleteNote };
 }
